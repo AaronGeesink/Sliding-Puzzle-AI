@@ -4,7 +4,7 @@ project(sliding-puzzle-ai)
 #ADD_SUBDIRECTORY(googletest)
 
 ADD_EXECUTABLE(SlidingPuzzle
-    main.cpp
+    SlidingPuzzle.cpp
 )
 
 #TARGET_LINK_LIBRARIES(test gtest)
