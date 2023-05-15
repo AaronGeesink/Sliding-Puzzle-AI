@@ -10,16 +10,29 @@ using namespace std;
 int handleIntegerInput(int maxSelection);
 void createDefaultPuzzle(vector<vector<int>>& initialState, vector<vector<int>>& goalState);
 void createCustomPuzzle(vector<vector<int>>& initialState, vector<vector<int>>& goalState);
-bool puzzleIsValid(vector<vector<int>>& puzzle);
 void printPuzzle(vector<vector<int>>& puzzle);
 string puzzleToString(vector<vector<int>>& puzzle);
 
-void uniformCostSearch(vector<vector<int>>& initialState, vector<vector<int>>& goalState);
+void AStar(vector<vector<int>>& initialState, vector<vector<int>>& goalState, int (*heuristic)(vector<vector<int>>, vector<vector<int>>));
+
+// Heuristic Functions
+int uniformCostHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
+int misplacedTilesHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
+int manhattanHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
 
 
 struct BoardStateNode {
+
+	friend bool operator> (BoardStateNode const& lhs, BoardStateNode const& rhs) {
+		if (lhs.depth + lhs.heuristic == rhs.depth + rhs.heuristic)
+			return lhs.depth > rhs.depth;
+		else
+        	return (lhs.depth + lhs.heuristic) > (rhs.depth + rhs.heuristic);
+    }
+
 	vector<vector<int>> state; // state of this node
 	int depth; // depth that this node was expanded
+	int heuristic; // estimated distance to the goal state
 };
 
 int main() {
@@ -55,13 +68,19 @@ int main() {
 	input = handleIntegerInput(3);
 
 	if (input == 1) { // Uniform Cost Search
-		uniformCostSearch(initialState, goalState);
+		int (*heuristic)(vector<vector<int>>, vector<vector<int>>);
+	    heuristic = uniformCostHueristic;
+		AStar(initialState, goalState, heuristic);
 	}
 	else if (input == 2) { // A* with Misplaced Tile Heuristic
-
+		int (*heuristic)(vector<vector<int>>, vector<vector<int>>);
+	    heuristic = misplacedTilesHueristic;
+		AStar(initialState, goalState, heuristic);
 	}
 	else if (input == 3) { // A* with Manhattan Distance Heuristic
-
+		int (*heuristic)(vector<vector<int>>, vector<vector<int>>);
+	    heuristic = manhattanHueristic;
+		AStar(initialState, goalState, heuristic);
 	}
 
 	return 0;
@@ -125,7 +144,37 @@ void createDefaultPuzzle(vector<vector<int>> &initialState, vector<vector<int>> 
 }
 
 void createCustomPuzzle(vector<vector<int>> &initialState, vector<vector<int>> &goalState) {
-	
+	int input = 0;
+	cout << "\nPlease input an integer size for the puzzle (max size is 10):\n";
+	input = handleIntegerInput(10); // change this to allow for puzzles larger than 10x10
+
+	cout << "\nPuzzle size is " << input << "x" << input << endl;
+	cout << "Enter your puzzle, using a zero to represent the blank.\n";
+	cout << "Please only enter valid puzzles. Enter each row delimiting the numbers with a space.\n";
+	cout << "Type RET only when finished entering each row.\n";
+
+	for (int i = 0; i < input; i++) {
+		cout << "Enter row number " << i+1 << ": ";
+		vector<int> numbers;
+		int number = 0;
+		for (int j = 0; j < input; j++) {
+			cin >> number;
+			numbers.push_back(number);
+		}
+		initialState.push_back(numbers);
+	}
+
+	// generate goal state for the given dimensions
+	int count = 1;
+	for (int i = 0; i < input; i++) {
+		vector<int> numbers;
+		for (int j = 0; j < input; j++) {
+			numbers.push_back(count);
+			count++;
+		}
+		goalState.push_back(numbers);
+	}
+	goalState[input-1][input-1] = 0;
 }
 
 void printPuzzle(vector<vector<int>> &puzzle) {
@@ -146,24 +195,40 @@ string puzzleToString(vector<vector<int>> &puzzle)
 	return puzzleString;
 }
 
-void uniformCostSearch(vector<vector<int>> &initialState, vector<vector<int>> &goalState) {
-	queue<BoardStateNode> nodesToExpand; // queue of nodes to expand
-	unordered_map<string, bool> repeatedStates; // an unordered_map used to keep track of repeated states
+/*
+AStar algorithm for the sliding puzzle problem.
+Inputs:
+	vector<vector<int>> &initialState: The initial state of the problem space, passed by reference.
+	vector<vector<int>> &goalState: The goal state of the problem space, passed by reference.
+
+	int (*heuristic)(vector<vector<int>>, vector<vector<int>>): a heuristic function pointer.
+	Heuristic function must have an initial state and a goal state as input and returns an integer heuristic value.
+*/
+void AStar(vector<vector<int>> &initialState, vector<vector<int>> &goalState,
+	int (*heuristic)(vector<vector<int>>, vector<vector<int>>))
+	{
+	std::priority_queue<BoardStateNode, vector<BoardStateNode>, std::greater<BoardStateNode>> nodesToExpand; // priority queue of nodes to expand
+	unordered_map<string, bool> repeatedStates; // an unordered_map used to keep track of repeated states for pruning
 	int numberNodesExpanded = 0;
 	int maxQueueSize = 1;
 
+	// Create and enqueue initial node
 	BoardStateNode initialNode;
 	initialNode.state = initialState;
 	initialNode.depth = 0;
+	initialNode.heuristic = heuristic(initialState, goalState);
 
 	nodesToExpand.push(initialNode);
 	string initialKey = puzzleToString(initialState);
 	repeatedStates.insert({initialKey, true});
 
-	// function ends either when goal is found, or when full search tree is exhausted
+	// Function ends either when goal is found, or when full search tree is exhausted
 	while(!nodesToExpand.empty()) {
-		BoardStateNode currentNode = nodesToExpand.front();
+		BoardStateNode currentNode = nodesToExpand.top();
 		nodesToExpand.pop();
+
+		cout << "The best state to expand with a g(n) = " << currentNode.depth <<" and h(n) = " << currentNode.heuristic << " is:\n";
+		printPuzzle(currentNode.state);
 
 		int currentDepth = currentNode.depth + 1;
 		numberNodesExpanded++;
@@ -203,6 +268,7 @@ void uniformCostSearch(vector<vector<int>> &initialState, vector<vector<int>> &g
 				BoardStateNode newNode;
 				newNode.state = consideredState;
 				newNode.depth = currentDepth;
+				newNode.heuristic = heuristic(consideredState, goalState);
 				nodesToExpand.push(newNode);
 				repeatedStates.insert({newKey, true});
 			}	
@@ -220,6 +286,7 @@ void uniformCostSearch(vector<vector<int>> &initialState, vector<vector<int>> &g
 				BoardStateNode newNode;
 				newNode.state = consideredState;
 				newNode.depth = currentDepth;
+				newNode.heuristic = heuristic(consideredState, goalState);
 				nodesToExpand.push(newNode);
 				repeatedStates.insert({newKey, true});
 			}	
@@ -237,6 +304,7 @@ void uniformCostSearch(vector<vector<int>> &initialState, vector<vector<int>> &g
 				BoardStateNode newNode;
 				newNode.state = consideredState;
 				newNode.depth = currentDepth;
+				newNode.heuristic = heuristic(consideredState, goalState);
 				nodesToExpand.push(newNode);
 				repeatedStates.insert({newKey, true});
 			}	
@@ -254,6 +322,7 @@ void uniformCostSearch(vector<vector<int>> &initialState, vector<vector<int>> &g
 				BoardStateNode newNode;
 				newNode.state = consideredState;
 				newNode.depth = currentDepth;
+				newNode.heuristic = heuristic(consideredState, goalState);
 				nodesToExpand.push(newNode);
 				repeatedStates.insert({newKey, true});
 			}	
@@ -267,4 +336,45 @@ void uniformCostSearch(vector<vector<int>> &initialState, vector<vector<int>> &g
 	cout << "No solution exists!\n";
 	cout << "Number of nodes expanded: " << numberNodesExpanded << endl;
 	cout << "Max queue size: " << maxQueueSize;
+}
+
+// A heuristic function that just returns zero. With A*, equivalent to uniform cost search.
+int uniformCostHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
+	return 0;
+}
+
+// Finds the total number of tiles that are not in their correct spots
+int misplacedTilesHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
+	int numberMisplacedTiles = 0;
+	for(int i = 0; i < currentState.size(); i++) {
+		for(int j = 0; j < currentState[i].size(); j++)
+			if (currentState[i][j] != goalState [i][j])
+				numberMisplacedTiles++;
+	}
+	return numberMisplacedTiles++;
+}
+
+// Finds the sum of the manhattan distance of each tile to its goal coordinate
+int manhattanHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
+	int totalManhattanDistance = 0;
+	vector<pair<int,int>> goalStateCoordinates;
+
+	// Find the correct location of all tiles in the goal state
+	for(int i = 0; i < goalState.size(); i++) {
+		for(int j = 0; j < goalState[i].size(); j++) {
+			if (goalState[i][j] != 0)
+				goalStateCoordinates.push_back(make_pair(i,j));
+		}
+	}
+
+	// Use coordinates of goal state tiles to calculate manhattan distance
+	for(int i = 0; i < currentState.size(); i++) {
+		for(int j = 0; j < currentState[i].size(); j++) {
+			int tile = currentState[i][j];
+			if (tile != 0)
+				totalManhattanDistance += abs(goalStateCoordinates.at(tile-1).first - i) + abs(goalStateCoordinates.at(tile-1).second - j);
+		}
+	}
+
+	return totalManhattanDistance++;
 }
