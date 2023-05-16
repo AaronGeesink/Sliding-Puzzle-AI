@@ -227,8 +227,8 @@ void AStar(vector<vector<int>> &initialState, vector<vector<int>> &goalState,
 		BoardStateNode currentNode = nodesToExpand.top();
 		nodesToExpand.pop();
 
-		//cout << "The best state to expand with a g(n) = " << currentNode.depth <<" and h(n) = " << currentNode.heuristic << " is:\n";
-		//printPuzzle(currentNode.state);
+		cout << "The best state to expand with a g(n) = " << currentNode.depth <<" and h(n) = " << currentNode.heuristic << " is:\n";
+		printPuzzle(currentNode.state);
 
 		int currentDepth = currentNode.depth + 1;
 		numberNodesExpanded++;
