@@ -16,9 +16,9 @@ string puzzleToString(vector<vector<int>>& puzzle);
 void AStar(vector<vector<int>>& initialState, vector<vector<int>>& goalState, int (*heuristic)(vector<vector<int>>, vector<vector<int>>));
 
 // Heuristic Functions
-int uniformCostHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
-int misplacedTilesHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
-int manhattanHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
+int uniformCostHeuristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
+int misplacedTilesHeuristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
+int manhattanHeuristic(vector<vector<int>> currentState, vector<vector<int>> goalState);
 
 
 struct BoardStateNode {
@@ -31,8 +31,8 @@ struct BoardStateNode {
     }
 
 	vector<vector<int>> state; // state of this node
-	int depth; // depth that this node was expanded
-	int heuristic; // estimated distance to the goal state
+	int depth; // depth that this node was expanded, g(n)
+	int heuristic; // estimated distance to the goal state, h(n)
 };
 
 int main() {
@@ -69,17 +69,17 @@ int main() {
 
 	if (input == 1) { // Uniform Cost Search
 		int (*heuristic)(vector<vector<int>>, vector<vector<int>>);
-	    heuristic = uniformCostHueristic;
+	    heuristic = uniformCostHeuristic;
 		AStar(initialState, goalState, heuristic);
 	}
 	else if (input == 2) { // A* with Misplaced Tile Heuristic
 		int (*heuristic)(vector<vector<int>>, vector<vector<int>>);
-	    heuristic = misplacedTilesHueristic;
+	    heuristic = misplacedTilesHeuristic;
 		AStar(initialState, goalState, heuristic);
 	}
 	else if (input == 3) { // A* with Manhattan Distance Heuristic
 		int (*heuristic)(vector<vector<int>>, vector<vector<int>>);
-	    heuristic = manhattanHueristic;
+	    heuristic = manhattanHeuristic;
 		AStar(initialState, goalState, heuristic);
 	}
 
@@ -227,8 +227,8 @@ void AStar(vector<vector<int>> &initialState, vector<vector<int>> &goalState,
 		BoardStateNode currentNode = nodesToExpand.top();
 		nodesToExpand.pop();
 
-		cout << "The best state to expand with a g(n) = " << currentNode.depth <<" and h(n) = " << currentNode.heuristic << " is:\n";
-		printPuzzle(currentNode.state);
+		//cout << "The best state to expand with a g(n) = " << currentNode.depth <<" and h(n) = " << currentNode.heuristic << " is:\n";
+		//printPuzzle(currentNode.state);
 
 		int currentDepth = currentNode.depth + 1;
 		numberNodesExpanded++;
@@ -238,7 +238,7 @@ void AStar(vector<vector<int>> &initialState, vector<vector<int>> &goalState,
 			cout << "\nGoal state!\n\n";
 			cout << "Solution depth was " << currentNode.depth << endl;
 			cout << "Number of nodes expanded: " << numberNodesExpanded << endl;
-			cout << "Max queue size: " << maxQueueSize;
+			cout << "Max queue size: " << maxQueueSize << endl;
 			return;
 		}
 
@@ -339,12 +339,12 @@ void AStar(vector<vector<int>> &initialState, vector<vector<int>> &goalState,
 }
 
 // A heuristic function that just returns zero. With A*, equivalent to uniform cost search.
-int uniformCostHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
+int uniformCostHeuristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
 	return 0;
 }
 
 // Finds the total number of tiles that are not in their correct spots
-int misplacedTilesHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
+int misplacedTilesHeuristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
 	int numberMisplacedTiles = 0;
 	for(int i = 0; i < currentState.size(); i++) {
 		for(int j = 0; j < currentState[i].size(); j++)
@@ -355,7 +355,7 @@ int misplacedTilesHueristic(vector<vector<int>> currentState, vector<vector<int>
 }
 
 // Finds the sum of the manhattan distance of each tile to its goal coordinate
-int manhattanHueristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
+int manhattanHeuristic(vector<vector<int>> currentState, vector<vector<int>> goalState) {
 	int totalManhattanDistance = 0;
 	vector<pair<int,int>> goalStateCoordinates;
 
@@ -372,7 +372,7 @@ int manhattanHueristic(vector<vector<int>> currentState, vector<vector<int>> goa
 		for(int j = 0; j < currentState[i].size(); j++) {
 			int tile = currentState[i][j];
 			if (tile != 0)
-				totalManhattanDistance += abs(goalStateCoordinates.at(tile-1).first - i) + abs(goalStateCoordinates.at(tile-1).second - j);
+				totalManhattanDistance += (abs(goalStateCoordinates.at(tile-1).first - i) + abs(goalStateCoordinates.at(tile-1).second - j));
 		}
 	}
 
